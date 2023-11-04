@@ -1,6 +1,9 @@
+use crossterm::terminal;
 use std::io::{self, Read};
 
-fn main() {
+fn main() -> io::Result<()> {
+    terminal::enable_raw_mode()?;
+
     println!("Hello, world!");
 
     for b in io::stdin().bytes() {
@@ -10,4 +13,6 @@ fn main() {
             break;
         }
     }
+
+    return Ok(());
 }
