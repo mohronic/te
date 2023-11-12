@@ -7,6 +7,8 @@ use crossterm::{
     ExecutableCommand,
 };
 
+use crate::editor::Position;
+
 pub struct Size {
     pub width: u16,
     pub height: u16,
@@ -44,7 +46,9 @@ impl Terminal {
             .expect("failed to clear screen");
     }
 
-    pub fn cursor_position(x: u16, y: u16) {
+    pub fn cursor_position(position: &Position) {
+        let x = position.x as u16;
+        let y = position.y as u16;
         io::stdout()
             .execute(cursor::MoveTo(x, y))
             .expect("failed to move cursor");
