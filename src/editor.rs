@@ -1,17 +1,24 @@
-use std::io::{Error, self, Write};
+use std::io::{self, Error, Write};
 
 use crossterm::{
+    cursor,
     event::{read, Event, KeyCode, KeyEvent, KeyModifiers},
-    terminal, ExecutableCommand, execute, cursor,
+    execute, terminal,
 };
+
+use crate::Terminal;
 
 pub struct Editor {
     should_quit: bool,
+    terminal: Terminal,
 }
 
 impl Editor {
     pub fn default() -> Self {
-        Self { should_quit: false }
+        Self { 
+            should_quit: false,
+            terminal: Terminal::default().expect("Failed to initialize terminal"),
+        }
     }
 
     pub fn run(&mut self) {
@@ -34,7 +41,11 @@ impl Editor {
 
     fn refresh_screen(&self) -> Result<(), Error> {
         let mut stdout = io::stdout();
-        execute!(stdout, terminal::Clear(terminal::ClearType::All), cursor::MoveTo(0, 0))?;
+        execute!(
+            stdout,
+            terminal::Clear(terminal::ClearType::All),
+            cursor::MoveTo(0, 0)
+        )?;
         if self.should_quit {
             println!("Goodbye and thanks for all the fish!\r");
         } else {
@@ -45,7 +56,7 @@ impl Editor {
     }
 
     fn draw_rows(&self) {
-        for _ in 0..24 {
+        for _ in 0..self.terminal.size().height {
             println!("~\r");
         }
     }
