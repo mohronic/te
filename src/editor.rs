@@ -1,11 +1,11 @@
-use std::io::Error;
+use std::{env, io::Error};
 
 use crossterm::{
     event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers},
     terminal,
 };
 
-use crate::{Document, Terminal, Row};
+use crate::{Document, Row, Terminal};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -19,16 +19,26 @@ pub struct Editor {
     should_quit: bool,
     terminal: Terminal,
     cursor_position: Position,
+    offset: Position,
     document: Document,
 }
 
 impl Editor {
     pub fn default() -> Self {
+        let args: Vec<String> = env::args().collect();
+        let document = if args.len() > 1 {
+            let file_name = &args[1];
+            Document::open(file_name).unwrap_or_default()
+        } else {
+            Document::default()
+        };
+
         Self {
             should_quit: false,
             terminal: Terminal::default().expect("Failed to initialize terminal"),
             cursor_position: Position::default(),
-            document: Document::open(),
+            offset: Position::default(),
+            document,
         }
     }
 
@@ -56,7 +66,10 @@ impl Editor {
             println!("Goodbye and thanks for all the fish!\r");
         } else {
             self.draw_rows();
-            Terminal::cursor_position(&self.cursor_position);
+            Terminal::cursor_position(&Position {
+                x: self.cursor_position.x.saturating_sub(self.offset.x),
+                y: self.cursor_position.y.saturating_sub(self.offset.y),
+            });
         }
         Terminal::show_cursor();
         Terminal::flush()
@@ -78,9 +91,9 @@ impl Editor {
         for terminal_row in 0..height - 1 {
             Terminal::clear_current_line();
 
-            if let Some(row) = self.document.row(terminal_row as usize) {
+            if let Some(row) = self.document.row(terminal_row as usize + self.offset.y) {
                 self.draw_row(row);
-            } else if terminal_row == height / 3 {
+            } else if self.document.is_empty() && terminal_row == height / 3 {
                 self.draw_welcome_message();
             } else {
                 println!("~\r");
@@ -89,8 +102,9 @@ impl Editor {
     }
 
     fn draw_row(&self, row: &Row) {
-        let start = 0;
-        let end = self.terminal.size().width as usize;
+        let start = self.offset.x;
+        let width = self.terminal.size().width as usize;
+        let end = self.offset.x + width;
         let row = row.render(start, end);
         println!("{}\r", row)
     }
@@ -112,13 +126,18 @@ impl Editor {
             | (KeyModifiers::NONE, KeyCode::Home) => self.move_cursor(pressed_key),
             _ => (),
         }
+        self.scroll();
         Ok(())
     }
 
     fn move_cursor(&mut self, key: KeyEvent) {
         let Position { mut x, mut y } = self.cursor_position;
-        let height = self.terminal.size().height as usize;
-        let width = self.terminal.size().width as usize;
+        let height = self.document.len() as usize;
+        let mut width = if let Some(row) = self.document.row(y) {
+            row.len()
+        } else {
+            0
+        };
         match key.code {
             KeyCode::Up => y = y.saturating_sub(1),
             KeyCode::Down => {
@@ -138,7 +157,36 @@ impl Editor {
             KeyCode::Home => x = 0,
             _ => (),
         };
+
+        width = if let Some(row) = self.document.row(y) {
+            row.len()
+        } else {
+            0
+        };
+        if x > width {
+            x = width;
+        }
+
         self.cursor_position = Position { x, y }
+    }
+
+    fn scroll(&mut self) {
+        let Position { x, y } = self.cursor_position;
+        let width = self.terminal.size().width as usize;
+        let height = self.terminal.size().height as usize;
+        let offset = &mut self.offset;
+
+        if y < offset.y {
+            offset.y = y;
+        } else if y >= offset.y.saturating_add(height) {
+            offset.y = y.saturating_sub(height).saturating_add(1);
+        }
+
+        if x < offset.x {
+            offset.x = x;
+        } else if x >= offset.x.saturating_add(width) {
+            offset.x = x.saturating_sub(width).saturating_add(1);
+        }
     }
 }
 
