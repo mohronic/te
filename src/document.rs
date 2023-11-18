@@ -1,6 +1,6 @@
 use std::{fs, io::Error};
 
-use crate::{row, Row};
+use crate::Row;
 
 #[derive(Default)]
 pub struct Document {
