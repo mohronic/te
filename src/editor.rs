@@ -14,6 +14,11 @@ const STATUS_BG_COLOR: Color = Color::Rgb {
     g: 39,
     b: 38,
 };
+const STATUS_FG_COLOR: Color = Color::Rgb {
+    r: 135,
+    g: 133,
+    b: 128,
+};
 const MESSAGE_BG_COLOR: Color = Color::Rgb {
     r: 64,
     g: 62,
@@ -230,10 +235,27 @@ impl Editor {
     }
 
     fn draw_status_bar(&self) {
-        let spaces = " ".repeat(self.terminal.size().width as usize);
+        let mut status;
+        let width = self.terminal.size().width as usize;
+        let mut file_name = "[No Name]".to_string();
+        if let Some(name) = &self.document.file_name {
+            file_name = name.clone();
+            file_name.truncate(20);
+        }
+        status = format!("{} - {} lines", file_name, self.document.len());
+        let line_indicator = format!("{}/{}", self.cursor_position.y.saturating_add(1), self.document.len());
+        let len = status.len() + line_indicator.len();
+        if width > len {
+            status.push_str(&" ".repeat(width - len));
+        }
+        status = format!("{}{}", status, line_indicator);
+        status.truncate(width);
+
         Terminal::set_bg_color(STATUS_BG_COLOR);
-        println!("{}\r", spaces);
+        Terminal::set_fg_color(STATUS_FG_COLOR);
+        println!("{}\r", status);
         Terminal::reset_bg_color();
+        Terminal::reset_fg_color();
     }
 
     fn draw_message_bar(&self) {

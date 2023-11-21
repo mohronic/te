@@ -3,7 +3,7 @@ use std::io::{self, Error, Write};
 use crossterm::{
     cursor,
     event::{read, Event, KeyEvent},
-    style::{Color, SetBackgroundColor, SetForegroundColor, ResetColor},
+    style::{Color, ResetColor, SetBackgroundColor, SetForegroundColor},
     terminal::{self, size},
     ExecutableCommand,
 };
@@ -15,7 +15,7 @@ const EDITOR_BG_COLOR: Color = Color::Rgb {
     g: 15,
     b: 15,
 };
-const TEXT_COLOR: Color = Color::Rgb {
+const EDITOR_FG_COLOR: Color = Color::Rgb {
     r: 206,
     g: 205,
     b: 195,
@@ -34,7 +34,7 @@ impl Terminal {
     pub fn default() -> Result<Self, Error> {
         terminal::enable_raw_mode()?;
         Terminal::reset_bg_color();
-        Terminal::set_fg_color(TEXT_COLOR);
+        Terminal::reset_fg_color();
         let (columns, rows) = size()?;
         Ok(Self {
             size: Size {
@@ -108,6 +108,12 @@ impl Terminal {
         io::stdout()
             .execute(SetForegroundColor(color))
             .expect("failed to set fg color");
+    }
+
+    pub fn reset_fg_color() {
+        io::stdout()
+            .execute(SetBackgroundColor(EDITOR_FG_COLOR))
+            .expect("failed to reset fg color");
     }
 
     pub fn reset_color() {
