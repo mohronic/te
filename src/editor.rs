@@ -132,6 +132,7 @@ impl Editor {
 
     fn move_cursor(&mut self, key: KeyEvent) {
         let Position { mut x, mut y } = self.cursor_position;
+        let terminal_height = self.terminal.size().height as usize;
         let height = self.document.len() as usize;
         let mut width = if let Some(row) = self.document.row(y) {
             row.len()
@@ -145,14 +146,40 @@ impl Editor {
                     y = y.saturating_add(1)
                 }
             }
-            KeyCode::Left => x = x.saturating_sub(1),
-            KeyCode::Right => {
-                if x < width {
-                    x = x.saturating_add(1)
+            KeyCode::Left => {
+                if x > 0 {
+                    x -= 1
+                } else if y > 0 {
+                    y -= 1;
+                    if let Some(row) = self.document.row(y) {
+                        x = row.len();
+                    } else {
+                        x = 0;
+                    }
                 }
             }
-            KeyCode::PageUp => y = 0,
-            KeyCode::PageDown => y = height,
+            KeyCode::Right => {
+                if x < width {
+                    x += 1;
+                } else if y < height {
+                    y += 1;
+                    x = 0;
+                }
+            }
+            KeyCode::PageUp => {
+                y = if y > terminal_height {
+                    y - terminal_height
+                } else {
+                    0
+                }
+            }
+            KeyCode::PageDown => {
+                y = if y.saturating_add(terminal_height) < height {
+                    y + terminal_height as usize
+                } else {
+                    height
+                }
+            }
             KeyCode::End => x = width,
             KeyCode::Home => x = 0,
             _ => (),
