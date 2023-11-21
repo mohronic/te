@@ -25,7 +25,7 @@ impl Terminal {
         Ok(Self {
             size: Size {
                 width: columns,
-                height: rows,
+                height: rows.saturating_sub(2),
             },
         })
     }
