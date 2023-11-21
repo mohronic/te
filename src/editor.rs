@@ -2,12 +2,23 @@ use std::{env, io::Error};
 
 use crossterm::{
     event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers},
+    style::Color,
     terminal,
 };
 
 use crate::{Document, Row, Terminal};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+const STATUS_BG_COLOR: Color = Color::Rgb {
+    r: 40,
+    g: 39,
+    b: 38,
+};
+const MESSAGE_BG_COLOR: Color = Color::Rgb {
+    r: 64,
+    g: 62,
+    b: 60,
+};
 
 #[derive(Default)]
 pub struct Position {
@@ -54,7 +65,6 @@ impl Editor {
                 die(&error);
             }
         }
-
         terminal::disable_raw_mode().unwrap();
     }
 
@@ -62,10 +72,13 @@ impl Editor {
         Terminal::hide_cursor();
         Terminal::cursor_position(&Position::default());
         if self.should_quit {
+            Terminal::reset_color();
             Terminal::clear_screen();
             println!("Goodbye and thanks for all the fish!\r");
         } else {
             self.draw_rows();
+            self.draw_status_bar();
+            self.draw_message_bar();
             Terminal::cursor_position(&Position {
                 x: self.cursor_position.x.saturating_sub(self.offset.x),
                 y: self.cursor_position.y.saturating_sub(self.offset.y),
@@ -214,6 +227,19 @@ impl Editor {
         } else if x >= offset.x.saturating_add(width) {
             offset.x = x.saturating_sub(width).saturating_add(1);
         }
+    }
+
+    fn draw_status_bar(&self) {
+        let spaces = " ".repeat(self.terminal.size().width as usize);
+        Terminal::set_bg_color(STATUS_BG_COLOR);
+        println!("{}\r", spaces);
+        Terminal::reset_bg_color();
+    }
+
+    fn draw_message_bar(&self) {
+        Terminal::set_bg_color(MESSAGE_BG_COLOR);
+        Terminal::clear_current_line();
+        Terminal::reset_bg_color();
     }
 }
 
