@@ -171,7 +171,6 @@ impl Editor {
                     self.move_cursor(KeyCode::Left);
                     self.document.delete(&self.cursor_position);
                 }
-                self.document.delete(&self.cursor_position);
             }
             (KeyModifiers::NONE, KeyCode::Up)
             | (KeyModifiers::NONE, KeyCode::Down)
