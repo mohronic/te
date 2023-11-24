@@ -1,7 +1,7 @@
 use std::{env, io::Error, time::{Instant, Duration}};
 
 use crossterm::{
-    event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers},
+    event::{KeyCode, KeyEventKind, KeyModifiers},
     style::Color,
     terminal,
 };
@@ -157,6 +157,10 @@ impl Editor {
         }
         match (pressed_key.modifiers, pressed_key.code) {
             (KeyModifiers::CONTROL, KeyCode::Char('q')) => self.should_quit = true,
+            (_, KeyCode::Char(c)) => {
+                self.document.insert(&self.cursor_position, c);
+                self.move_cursor(KeyCode::Right);
+            },
             (KeyModifiers::NONE, KeyCode::Up)
             | (KeyModifiers::NONE, KeyCode::Down)
             | (KeyModifiers::NONE, KeyCode::Left)
@@ -164,14 +168,14 @@ impl Editor {
             | (KeyModifiers::NONE, KeyCode::PageUp)
             | (KeyModifiers::NONE, KeyCode::PageDown)
             | (KeyModifiers::NONE, KeyCode::End)
-            | (KeyModifiers::NONE, KeyCode::Home) => self.move_cursor(pressed_key),
+            | (KeyModifiers::NONE, KeyCode::Home) => self.move_cursor(pressed_key.code),
             _ => (),
         }
         self.scroll();
         Ok(())
     }
 
-    fn move_cursor(&mut self, key: KeyEvent) {
+    fn move_cursor(&mut self, key_code: KeyCode) {
         let Position { mut x, mut y } = self.cursor_position;
         let terminal_height = self.terminal.size().height as usize;
         let height = self.document.len() as usize;
@@ -180,7 +184,7 @@ impl Editor {
         } else {
             0
         };
-        match key.code {
+        match key_code {
             KeyCode::Up => y = y.saturating_sub(1),
             KeyCode::Down => {
                 if y < height {
