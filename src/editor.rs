@@ -172,6 +172,11 @@ impl Editor {
                     self.document.delete(&self.cursor_position);
                 }
             }
+            (KeyModifiers::NONE, KeyCode::Enter) => {
+                self.document.insert_newline(&self.cursor_position);
+                self.move_cursor(KeyCode::Down);
+                self.move_cursor(KeyCode::Home);
+            }
             (KeyModifiers::NONE, KeyCode::Up)
             | (KeyModifiers::NONE, KeyCode::Down)
             | (KeyModifiers::NONE, KeyCode::Left)
