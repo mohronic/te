@@ -1,4 +1,4 @@
-use std::{env, io::Error};
+use std::{env, io::Error, time::{Instant, Duration}};
 
 use crossterm::{
     event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers},
@@ -31,20 +31,42 @@ pub struct Position {
     pub y: usize,
 }
 
+struct StatusMessage {
+    text: String,
+    time: Instant,
+}
+
+impl StatusMessage {
+    fn from(message: String) -> Self {
+        Self {
+            text: message,
+            time: Instant::now(),
+        }
+    }
+}
+
 pub struct Editor {
     should_quit: bool,
     terminal: Terminal,
     cursor_position: Position,
     offset: Position,
     document: Document,
+    status_message: StatusMessage,
 }
 
 impl Editor {
     pub fn default() -> Self {
         let args: Vec<String> = env::args().collect();
+        let mut initial_status = String::from("HELP: Ctrl-Q = quit");
         let document = if args.len() > 1 {
             let file_name = &args[1];
-            Document::open(file_name).unwrap_or_default()
+            let doc = Document::open(file_name);
+            if doc.is_ok() {
+                doc.unwrap()
+            } else {
+                initial_status = format!("ERR: Could not open file: {}", file_name);
+                Document::default()
+            }
         } else {
             Document::default()
         };
@@ -55,6 +77,7 @@ impl Editor {
             cursor_position: Position::default(),
             offset: Position::default(),
             document,
+            status_message: StatusMessage::from(initial_status),
         }
     }
 
@@ -243,7 +266,11 @@ impl Editor {
             file_name.truncate(20);
         }
         status = format!("{} - {} lines", file_name, self.document.len());
-        let line_indicator = format!("{}/{}", self.cursor_position.y.saturating_add(1), self.document.len());
+        let line_indicator = format!(
+            "{}/{}",
+            self.cursor_position.y.saturating_add(1),
+            self.document.len()
+        );
         let len = status.len() + line_indicator.len();
         if width > len {
             status.push_str(&" ".repeat(width - len));
@@ -261,6 +288,12 @@ impl Editor {
     fn draw_message_bar(&self) {
         Terminal::set_bg_color(MESSAGE_BG_COLOR);
         Terminal::clear_current_line();
+        let message = &self.status_message;
+        if Instant::now() - message.time < Duration::new(5, 0) {
+            let mut text = message.text.clone();
+            text.truncate(self.terminal.size().width as usize);
+            print!("{}", text);
+        }
         Terminal::reset_bg_color();
     }
 }
