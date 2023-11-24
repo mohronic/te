@@ -1,4 +1,8 @@
-use std::{env, io::Error, time::{Instant, Duration}};
+use std::{
+    env,
+    io::Error,
+    time::{Duration, Instant},
+};
 
 use crossterm::{
     event::{KeyCode, KeyEventKind, KeyModifiers},
@@ -160,7 +164,8 @@ impl Editor {
             (_, KeyCode::Char(c)) => {
                 self.document.insert(&self.cursor_position, c);
                 self.move_cursor(KeyCode::Right);
-            },
+            }
+            (KeyModifiers::NONE, KeyCode::Delete) => self.document.delete(&self.cursor_position),
             (KeyModifiers::NONE, KeyCode::Up)
             | (KeyModifiers::NONE, KeyCode::Down)
             | (KeyModifiers::NONE, KeyCode::Left)
