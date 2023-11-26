@@ -162,6 +162,9 @@ impl Editor {
         match (pressed_key.modifiers, pressed_key.code) {
             (KeyModifiers::CONTROL, KeyCode::Char('q')) => self.should_quit = true,
             (KeyModifiers::CONTROL, KeyCode::Char('s')) => {
+                if self.document.file_name.is_none() {
+                    self.document.file_name = Some(self.promt("Save as: ")?);
+                }
                 if self.document.save().is_ok() {
                     self.status_message = StatusMessage::from("File saved successfully".to_string());
                 } else {
@@ -322,6 +325,35 @@ impl Editor {
             print!("{}", text);
         }
         Terminal::reset_bg_color();
+    }
+
+    fn promt(&mut self, prompt: &str) -> Result<String, Error> {
+        let mut result = String::new();
+
+        loop {
+            self.status_message = StatusMessage::from(format!("{}{}", prompt, result));
+            self.refresh_screen()?;
+            let pressed_key = Terminal::read_key()?;
+            match pressed_key.code {
+                KeyCode::Enter => {
+                    self.status_message = StatusMessage::from(String::new());
+                    break;
+                }
+                KeyCode::Char(c) => {
+                    if !c.is_control() {
+                        result.push(c);
+                    }
+                }
+                _ => (),
+            }
+            if pressed_key.code == KeyCode::Enter {
+                
+                
+            }
+            
+        }
+
+        Ok(result)
     }
 }
 
