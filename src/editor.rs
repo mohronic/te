@@ -64,13 +64,12 @@ impl Editor {
     pub fn default() -> Self {
         let args: Vec<String> = env::args().collect();
         let mut initial_status = String::from("HELP: Ctrl-S = save | Ctrl-Q = quit");
-        let document = if args.len() > 1 {
-            let file_name = &args[1];
+        let document = if let Some(file_name) = args.get(1) {
             let doc = Document::open(file_name);
-            if doc.is_ok() {
-                doc.unwrap()
+            if let Ok(doc) = doc {
+                doc
             } else {
-                initial_status = format!("ERR: Could not open file: {}", file_name);
+                initial_status = format!("ERR: Could not open file: {file_name}");
                 Document::default()
             }
         } else {
@@ -124,14 +123,14 @@ impl Editor {
     }
 
     fn draw_welcome_message(&self) {
-        let mut welcome_message = format!("te editor -- version {}\r", VERSION);
+        let mut welcome_message = format!("te editor -- version {VERSION}\r");
         let width = self.terminal.size().width as usize;
         let len = welcome_message.len();
         let padding = width.saturating_sub(len) / 2;
         let spaces = " ".repeat(padding.saturating_sub(1));
-        welcome_message = format!("~{}{}", spaces, welcome_message);
+        welcome_message = format!("~{spaces}{welcome_message}");
         welcome_message.truncate(width);
-        println!("{}\r", welcome_message);
+        println!("{welcome_message}\r");
     }
 
     fn draw_rows(&self) {
@@ -154,7 +153,7 @@ impl Editor {
         let width = self.terminal.size().width as usize;
         let end = self.offset.x.saturating_add(width);
         let row = row.render(start, end);
-        println!("{}\r", row)
+        println!("{row}\r")
     }
 
     fn process_keypress(&mut self) -> Result<(), Error> {
@@ -323,12 +322,12 @@ impl Editor {
         if width > len {
             status.push_str(&" ".repeat(width.saturating_sub(len)));
         }
-        status = format!("{}{}", status, line_indicator);
+        status = format!("{status}{line_indicator}");
         status.truncate(width);
 
         Terminal::set_bg_color(STATUS_BG_COLOR);
         Terminal::set_fg_color(STATUS_FG_COLOR);
-        println!("{}\r", status);
+        println!("{status}\r");
         Terminal::reset_bg_color();
         Terminal::reset_fg_color();
     }
@@ -340,7 +339,7 @@ impl Editor {
         if Instant::now() - message.time < Duration::new(5, 0) {
             let mut text = message.text.clone();
             text.truncate(self.terminal.size().width as usize);
-            print!("{}", text);
+            print!("{text}");
         }
         Terminal::reset_bg_color();
     }
@@ -366,7 +365,7 @@ impl Editor {
         let mut result = String::new();
 
         loop {
-            self.status_message = StatusMessage::from(format!("{}{}", prompt, result));
+            self.status_message = StatusMessage::from(format!("{prompt}{result}"));
             self.refresh_screen()?;
             let pressed_key = Terminal::read_key()?;
             if pressed_key.kind == KeyEventKind::Release {
@@ -398,5 +397,5 @@ impl Editor {
 fn die(err: &std::io::Error) {
     Terminal::clear_screen();
     terminal::disable_raw_mode().unwrap();
-    panic!("{}", err)
+    panic!("{err}")
 }
