@@ -161,16 +161,7 @@ impl Editor {
         }
         match (pressed_key.modifiers, pressed_key.code) {
             (KeyModifiers::CONTROL, KeyCode::Char('q')) => self.should_quit = true,
-            (KeyModifiers::CONTROL, KeyCode::Char('s')) => {
-                if self.document.file_name.is_none() {
-                    self.document.file_name = Some(self.promt("Save as: ")?);
-                }
-                if self.document.save().is_ok() {
-                    self.status_message = StatusMessage::from("File saved successfully".to_string());
-                } else {
-                    self.status_message = StatusMessage::from("Error writing file".to_string());
-                }
-            }
+            (KeyModifiers::CONTROL, KeyCode::Char('s')) => self.save(),
             (_, KeyCode::Char(c)) => {
                 self.document.insert(&self.cursor_position, c);
                 self.move_cursor(KeyCode::Right);
@@ -327,16 +318,42 @@ impl Editor {
         Terminal::reset_bg_color();
     }
 
-    fn promt(&mut self, prompt: &str) -> Result<String, Error> {
+    fn save(&mut self) {
+        if self.document.file_name.is_none() {
+            let new_name = self.promt("Save as: ").unwrap_or(None);
+            if new_name.is_none() {
+                self.status_message = StatusMessage::from("Save aborted.".to_string());
+                return;
+            }
+            self.document.file_name = new_name;
+        }
+
+        if self.document.save().is_ok() {
+            self.status_message = StatusMessage::from("File saved successfully".to_string());
+        } else {
+            self.status_message = StatusMessage::from("Error writing file".to_string());
+        }
+    }
+
+    fn promt(&mut self, prompt: &str) -> Result<Option<String>, Error> {
         let mut result = String::new();
 
         loop {
             self.status_message = StatusMessage::from(format!("{}{}", prompt, result));
             self.refresh_screen()?;
             let pressed_key = Terminal::read_key()?;
+            if pressed_key.kind == KeyEventKind::Release {
+                continue;
+            }
             match pressed_key.code {
-                KeyCode::Enter => {
-                    self.status_message = StatusMessage::from(String::new());
+                KeyCode::Enter => break,
+                KeyCode::Backspace => {
+                    if !result.is_empty() {
+                        result.truncate(result.len()-1);
+                    }
+                }
+                KeyCode::Esc => {
+                    result.truncate(0);
                     break;
                 }
                 KeyCode::Char(c) => {
@@ -346,14 +363,12 @@ impl Editor {
                 }
                 _ => (),
             }
-            if pressed_key.code == KeyCode::Enter {
-                
-                
-            }
-            
         }
-
-        Ok(result)
+        self.status_message = StatusMessage::from(String::new());
+        if result.is_empty() {
+            return Ok(None);
+        }
+        Ok(Some(result))
     }
 }
 
