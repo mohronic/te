@@ -39,6 +39,9 @@ impl Document {
     }
 
     pub fn insert_newline(&mut self, at: &Position) {
+        if at.y > self.len() {
+            return;
+        }
         if at.y == self.len() || at.y.saturating_add(1) == self.len() {
             self.rows.push(Row::default());
             return;
@@ -68,7 +71,7 @@ impl Document {
             return;
         }
         self.dirty = true;
-        if at.x == self.rows.get_mut(at.y).unwrap().len() && at.y < len - 1 {
+        if at.x == self.rows.get_mut(at.y).unwrap().len() && at.y + 1 < len {
             let next_row = self.rows.remove(at.y + 1);
             let row = self.rows.get_mut(at.y).unwrap();
             row.append(&next_row);

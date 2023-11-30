@@ -139,7 +139,7 @@ impl Editor {
         for terminal_row in 0..height {
             Terminal::clear_current_line();
 
-            if let Some(row) = self.document.row(terminal_row as usize + self.offset.y) {
+            if let Some(row) = self.document.row(self.offset.y.saturating_add(terminal_row as usize)) {
                 self.draw_row(row);
             } else if self.document.is_empty() && terminal_row == height / 3 {
                 self.draw_welcome_message();
@@ -152,7 +152,7 @@ impl Editor {
     fn draw_row(&self, row: &Row) {
         let start = self.offset.x;
         let width = self.terminal.size().width as usize;
-        let end = self.offset.x + width;
+        let end = self.offset.x.saturating_add(width);
         let row = row.render(start, end);
         println!("{}\r", row)
     }
@@ -212,7 +212,7 @@ impl Editor {
     fn move_cursor(&mut self, key_code: KeyCode) {
         let Position { mut x, mut y } = self.cursor_position;
         let terminal_height = self.terminal.size().height as usize;
-        let height = self.document.len() as usize;
+        let height = self.document.len();
         let mut width = if let Some(row) = self.document.row(y) {
             row.len()
         } else {
@@ -222,7 +222,7 @@ impl Editor {
             KeyCode::Up => y = y.saturating_sub(1),
             KeyCode::Down => {
                 if y < height {
-                    y = y.saturating_add(1)
+                    y = y.saturating_add(1);
                 }
             }
             KeyCode::Left => {
@@ -247,14 +247,14 @@ impl Editor {
             }
             KeyCode::PageUp => {
                 y = if y > terminal_height {
-                    y - terminal_height
+                    y.saturating_sub(terminal_height)
                 } else {
                     0
                 }
             }
             KeyCode::PageDown => {
                 y = if y.saturating_add(terminal_height) < height {
-                    y + terminal_height as usize
+                    y.saturating_add(terminal_height)
                 } else {
                     height
                 }
@@ -321,7 +321,7 @@ impl Editor {
         );
         let len = status.len() + line_indicator.len();
         if width > len {
-            status.push_str(&" ".repeat(width - len));
+            status.push_str(&" ".repeat(width.saturating_sub(len)));
         }
         status = format!("{}{}", status, line_indicator);
         status.truncate(width);
@@ -374,11 +374,7 @@ impl Editor {
             }
             match pressed_key.code {
                 KeyCode::Enter => break,
-                KeyCode::Backspace => {
-                    if !result.is_empty() {
-                        result.truncate(result.len() - 1);
-                    }
-                }
+                KeyCode::Backspace => result.truncate(result.len().saturating_sub(1)),
                 KeyCode::Esc => {
                     result.truncate(0);
                     break;
