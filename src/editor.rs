@@ -13,6 +13,7 @@ use crossterm::{
 use crate::{Document, Row, Terminal};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+const QUIT_TIMES: u8 = 1;
 const STATUS_BG_COLOR: Color = Color::Rgb {
     r: 40,
     g: 39,
@@ -56,6 +57,7 @@ pub struct Editor {
     offset: Position,
     document: Document,
     status_message: StatusMessage,
+    quit_times: u8,
 }
 
 impl Editor {
@@ -82,6 +84,7 @@ impl Editor {
             offset: Position::default(),
             document,
             status_message: StatusMessage::from(initial_status),
+            quit_times: QUIT_TIMES,
         }
     }
 
@@ -160,7 +163,17 @@ impl Editor {
             return Ok(());
         }
         match (pressed_key.modifiers, pressed_key.code) {
-            (KeyModifiers::CONTROL, KeyCode::Char('q')) => self.should_quit = true,
+            (KeyModifiers::CONTROL, KeyCode::Char('q')) => {
+                if self.quit_times > 0 && self.document.is_dirty() {
+                    self.status_message = StatusMessage::from(format!(
+                        "WARNING! File has unsaved changes. Press Ctrl-Q {} more times to quit",
+                        self.quit_times
+                    ));
+                    self.quit_times -= 1;
+                    return Ok(());
+                }
+                self.should_quit = true
+            }
             (KeyModifiers::CONTROL, KeyCode::Char('s')) => self.save(),
             (_, KeyCode::Char(c)) => {
                 self.document.insert(&self.cursor_position, c);
@@ -189,6 +202,10 @@ impl Editor {
             _ => (),
         }
         self.scroll();
+        if self.quit_times < QUIT_TIMES {
+            self.quit_times = QUIT_TIMES;
+            self.status_message = StatusMessage::from(String::new());
+        }
         Ok(())
     }
 
@@ -281,12 +298,22 @@ impl Editor {
     fn draw_status_bar(&self) {
         let mut status;
         let width = self.terminal.size().width as usize;
+        let modified_indicator = if self.document.is_dirty() {
+            " (modified)"
+        } else {
+            ""
+        };
         let mut file_name = "[No Name]".to_string();
         if let Some(name) = &self.document.file_name {
             file_name = name.clone();
             file_name.truncate(20);
         }
-        status = format!("{} - {} lines", file_name, self.document.len());
+        status = format!(
+            "{} - {} lines{}",
+            file_name,
+            self.document.len(),
+            modified_indicator
+        );
         let line_indicator = format!(
             "{}/{}",
             self.cursor_position.y.saturating_add(1),
@@ -349,7 +376,7 @@ impl Editor {
                 KeyCode::Enter => break,
                 KeyCode::Backspace => {
                     if !result.is_empty() {
-                        result.truncate(result.len()-1);
+                        result.truncate(result.len() - 1);
                     }
                 }
                 KeyCode::Esc => {
